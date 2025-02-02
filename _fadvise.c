@@ -29,57 +29,74 @@
  */
 
 #include <Python.h>
-
-#define _XOPEN_SOURCE 600
 #include <fcntl.h>
 
 static PyObject *
 method_posix_fadvise(PyObject *self, PyObject *args)
 {
-	int fd, advice, ret;
-	off_t offset, len;
+    int fd, advice, ret;
+    off_t offset, len;
 
-	if (!PyArg_ParseTuple(args, "iLLi", &fd, &offset, &len, &advice))
-		return NULL;
+    if (!PyArg_ParseTuple(args, "iLLi", &fd, &offset, &len, &advice))
+        return NULL;
 
-	Py_BEGIN_ALLOW_THREADS;
-	ret = posix_fadvise(fd, (off_t)offset, (off_t)len, advice);
-	Py_END_ALLOW_THREADS;
+    Py_BEGIN_ALLOW_THREADS;
+    ret = posix_fadvise(fd, (off_t)offset, (off_t)len, advice);
+    Py_END_ALLOW_THREADS;
 
-	if (ret) {
-		errno = ret;
-		PyErr_SetFromErrno(PyExc_OSError);
-		return NULL;
-	}
+    if (ret) {
+        errno = ret;
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
 
-	Py_RETURN_NONE;
+    Py_RETURN_NONE;
 }
 
 static PyMethodDef fadvise_module_methods[] = {
-	{"posix_fadvise", method_posix_fadvise, METH_VARARGS,
-		"posix_fadvise(fd, offset, len, advice)"},
-	{NULL, NULL, 0, NULL}
+    {"posix_fadvise", method_posix_fadvise, METH_VARARGS,
+        "posix_fadvise(fd, offset, len, advice)"},
+    {NULL, NULL, 0, NULL}
 };
 
-struct PyModuleDef Fadvise =
-{
+#if PY_MAJOR_VERSION >= 3
+static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
-    "fadvise", /* name of module */
-    "usage: fadvise._fadvise(stream, offset, len, constant)\n", /* module documentation, may be NULL */
-    -1,   /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
+    "_fadvise",
+    "usage: fadvise._fadvise(stream, offset, len, constant)\n",
+    -1,
     fadvise_module_methods
 };
 
 PyMODINIT_FUNC
 PyInit__fadvise(void)
 {
-        PyMODINIT_FUNC m = PyModule_Create(&Fadvise);
-	PyModule_AddIntConstant(m, "POSIX_FADV_NORMAL", POSIX_FADV_NORMAL);
-	PyModule_AddIntConstant(m, "POSIX_FADV_RANDOM", POSIX_FADV_RANDOM);
-	PyModule_AddIntConstant(m, "POSIX_FADV_SEQUENTIAL", POSIX_FADV_SEQUENTIAL);
-	PyModule_AddIntConstant(m, "POSIX_FADV_WILLNEED", POSIX_FADV_WILLNEED);
-	PyModule_AddIntConstant(m, "POSIX_FADV_DONTNEED", POSIX_FADV_DONTNEED);
-	PyModule_AddIntConstant(m, "POSIX_FADV_NOREUSE", POSIX_FADV_NOREUSE);
-        return m;
-}
+    PyObject *m = PyModule_Create(&moduledef);
+    if (m == NULL)
+        return NULL;
 
+    PyModule_AddIntConstant(m, "POSIX_FADV_NORMAL", POSIX_FADV_NORMAL);
+    PyModule_AddIntConstant(m, "POSIX_FADV_RANDOM", POSIX_FADV_RANDOM);
+    PyModule_AddIntConstant(m, "POSIX_FADV_SEQUENTIAL", POSIX_FADV_SEQUENTIAL);
+    PyModule_AddIntConstant(m, "POSIX_FADV_WILLNEED", POSIX_FADV_WILLNEED);
+    PyModule_AddIntConstant(m, "POSIX_FADV_DONTNEED", POSIX_FADV_DONTNEED);
+    PyModule_AddIntConstant(m, "POSIX_FADV_NOREUSE", POSIX_FADV_NOREUSE);
+
+    return m;
+}
+#else
+PyMODINIT_FUNC
+init_fadvise(void)
+{
+    PyObject *m = Py_InitModule("_fadvise", fadvise_module_methods);
+    if (m == NULL)
+        return;
+
+    PyModule_AddIntConstant(m, "POSIX_FADV_NORMAL", POSIX_FADV_NORMAL);
+    PyModule_AddIntConstant(m, "POSIX_FADV_RANDOM", POSIX_FADV_RANDOM);
+    PyModule_AddIntConstant(m, "POSIX_FADV_SEQUENTIAL", POSIX_FADV_SEQUENTIAL);
+    PyModule_AddIntConstant(m, "POSIX_FADV_WILLNEED", POSIX_FADV_WILLNEED);
+    PyModule_AddIntConstant(m, "POSIX_FADV_DONTNEED", POSIX_FADV_DONTNEED);
+    PyModule_AddIntConstant(m, "POSIX_FADV_NOREUSE", POSIX_FADV_NOREUSE);
+}
+#endif
